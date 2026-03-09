@@ -1,4 +1,0 @@
-interface:
-  display_name: "MD File Viewer"
-  short_description: "Popup viewer for Markdown, Mermaid, images, and text files"
-  default_prompt: "Open a popup file viewer. Prefer running scripts/run_viewer.sh (uses .venv if present) to preview Markdown with Mermaid, images, and text files."

@@ -1,0 +1,514 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SKILLS_DIR="${REPO_ROOT}/skills"
+
+DRY_RUN=0
+
+usage() {
+  cat <<'EOF'
+Usage:
+  skillctl sync --skill <name> --agent <codex|claude|all> [--dry-run]
+  skillctl sync --all --agent <codex|claude|all> [--dry-run]
+  skillctl status [--agent <codex|claude|all>] [--skill <name>]
+  skillctl restore --skill <name> --agent <codex|claude> --latest [--dry-run]
+  skillctl validate --skill <name>
+  skillctl validate --all
+
+Notes:
+  - sync always runs: git fetch origin main && git pull --ff-only origin main
+  - if a target exists as a real directory/file, it is moved to:
+    ~/.{agent}/skills/.skillctl-backups/<skill>/<timestamp>/
+EOF
+}
+
+usage_sync() {
+  cat <<'EOF'
+Usage:
+  skillctl sync --skill <name> --agent <codex|claude|all> [--dry-run]
+  skillctl sync --all --agent <codex|claude|all> [--dry-run]
+EOF
+}
+
+usage_status() {
+  cat <<'EOF'
+Usage:
+  skillctl status [--agent <codex|claude|all>] [--skill <name>]
+EOF
+}
+
+usage_restore() {
+  cat <<'EOF'
+Usage:
+  skillctl restore --skill <name> --agent <codex|claude> --latest [--dry-run]
+EOF
+}
+
+usage_validate() {
+  cat <<'EOF'
+Usage:
+  skillctl validate --skill <name>
+  skillctl validate --all
+EOF
+}
+
+log() {
+  printf '%s\n' "$*"
+}
+
+err() {
+  printf '[ERROR] %s\n' "$*" >&2
+}
+
+die() {
+  err "$*"
+  exit 1
+}
+
+print_cmd() {
+  printf '[dry-run]'
+  for arg in "$@"; do
+    printf ' %q' "$arg"
+  done
+  printf '\n'
+}
+
+run_cmd() {
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    print_cmd "$@"
+    return 0
+  fi
+  "$@"
+}
+
+agent_root() {
+  case "$1" in
+    codex) printf '%s\n' "${HOME}/.codex/skills" ;;
+    claude) printf '%s\n' "${HOME}/.claude/skills" ;;
+    *) return 1 ;;
+  esac
+}
+
+validate_agent() {
+  local mode="$1"
+  local value="$2"
+
+  if [[ "${mode}" == "with-all" ]]; then
+    case "${value}" in
+      codex|claude|all) return 0 ;;
+      *) die "invalid --agent '${value}', expected codex|claude|all" ;;
+    esac
+  fi
+
+  case "${value}" in
+    codex|claude) return 0 ;;
+    *) die "invalid --agent '${value}', expected codex|claude" ;;
+  esac
+}
+
+expand_agents() {
+  local selected="$1"
+  if [[ "${selected}" == "all" ]]; then
+    printf '%s\n' "codex" "claude"
+  else
+    printf '%s\n' "${selected}"
+  fi
+}
+
+list_repo_skills() {
+  if [[ ! -d "${SKILLS_DIR}" ]]; then
+    return 0
+  fi
+  find "${SKILLS_DIR}" -mindepth 1 -maxdepth 1 -type d ! -name ".*" -exec basename {} \; | sort
+}
+
+require_skill() {
+  local skill="$1"
+  local skill_path="${SKILLS_DIR}/${skill}"
+  [[ -d "${skill_path}" ]] || die "skill '${skill}' not found in ${SKILLS_DIR}"
+  [[ -f "${skill_path}/SKILL.md" ]] || die "skill '${skill}' has no SKILL.md"
+}
+
+timestamp() {
+  date '+%Y%m%d-%H%M%S'
+}
+
+next_backup_path() {
+  local backup_root="$1"
+  local base candidate counter
+
+  base="$(timestamp)"
+  candidate="${backup_root}/${base}"
+  counter=1
+  while [[ -e "${candidate}" ]]; do
+    candidate="${backup_root}/${base}-${counter}"
+    counter=$((counter + 1))
+  done
+  printf '%s\n' "${candidate}"
+}
+
+sync_repo() {
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    print_cmd git -C "${REPO_ROOT}" fetch origin main
+    print_cmd git -C "${REPO_ROOT}" pull --ff-only origin main
+    return 0
+  fi
+  git -C "${REPO_ROOT}" fetch origin main
+  git -C "${REPO_ROOT}" pull --ff-only origin main
+}
+
+sync_skill_for_agent() {
+  local agent="$1"
+  local skill="$2"
+  local root source target expected current backup_root backup_path
+
+  root="$(agent_root "${agent}")"
+  source="${SKILLS_DIR}/${skill}"
+  target="${root}/${skill}"
+  expected="${source}"
+
+  run_cmd mkdir -p "${root}"
+
+  if [[ -L "${target}" ]]; then
+    current="$(readlink "${target}")"
+    if [[ "${current}" == "${expected}" ]]; then
+      log "[OK] ${agent}/${skill}: up-to-date"
+      return 0
+    fi
+    log "[INFO] ${agent}/${skill}: relinking from ${current} to ${expected}"
+    run_cmd rm "${target}"
+    run_cmd ln -s "${expected}" "${target}"
+    log "[OK] ${agent}/${skill}: relinked"
+    return 0
+  fi
+
+  if [[ -e "${target}" ]]; then
+    backup_root="${root}/.skillctl-backups/${skill}"
+    run_cmd mkdir -p "${backup_root}"
+    backup_path="$(next_backup_path "${backup_root}")"
+    run_cmd mv "${target}" "${backup_path}"
+    run_cmd ln -s "${expected}" "${target}"
+    log "[OK] ${agent}/${skill}: backed up to ${backup_path} and linked"
+    return 0
+  fi
+
+  run_cmd ln -s "${expected}" "${target}"
+  log "[OK] ${agent}/${skill}: linked"
+}
+
+status_skill_for_agent() {
+  local agent="$1"
+  local skill="$2"
+  local root source target expected state detail current kind
+
+  root="$(agent_root "${agent}")"
+  source="${SKILLS_DIR}/${skill}"
+  target="${root}/${skill}"
+  expected="${source}"
+
+  if [[ ! -d "${source}" ]]; then
+    state="missing-source"
+    detail="${source}"
+    printf '%-8s %-28s %-16s %s\n' "${agent}" "${skill}" "${state}" "${detail}"
+    return 2
+  fi
+
+  if [[ -L "${target}" ]]; then
+    current="$(readlink "${target}")"
+    if [[ "${current}" == "${expected}" ]]; then
+      state="linked-ok"
+      detail="${current}"
+      printf '%-8s %-28s %-16s %s\n' "${agent}" "${skill}" "${state}" "${detail}"
+      return 0
+    fi
+    state="linked-mismatch"
+    detail="${current}"
+    printf '%-8s %-28s %-16s %s\n' "${agent}" "${skill}" "${state}" "${detail}"
+    return 2
+  fi
+
+  if [[ -e "${target}" ]]; then
+    if [[ -d "${target}" ]]; then
+      kind="dir"
+    elif [[ -f "${target}" ]]; then
+      kind="file"
+    else
+      kind="path"
+    fi
+    state="conflict-${kind}"
+    detail="${target}"
+    printf '%-8s %-28s %-16s %s\n' "${agent}" "${skill}" "${state}" "${detail}"
+    return 2
+  fi
+
+  state="missing"
+  detail="${target}"
+  printf '%-8s %-28s %-16s %s\n' "${agent}" "${skill}" "${state}" "${detail}"
+  return 2
+}
+
+latest_backup_entry() {
+  local backup_root="$1"
+  find "${backup_root}" -mindepth 1 -maxdepth 1 -exec basename {} \; \
+    | grep -E '^[0-9]{8}-[0-9]{6}(-[0-9]+)?$' \
+    | sort \
+    | tail -n 1 \
+    | sed "s|^|${backup_root}/|"
+}
+
+restore_skill() {
+  local agent="$1"
+  local skill="$2"
+  local root target backup_root backup_path ts current_backup
+
+  root="$(agent_root "${agent}")"
+  target="${root}/${skill}"
+  backup_root="${root}/.skillctl-backups/${skill}"
+
+  [[ -d "${backup_root}" ]] || die "no backup found for ${agent}/${skill} at ${backup_root}"
+
+  current_backup="$(latest_backup_entry "${backup_root}")"
+  [[ -n "${current_backup}" ]] || die "no backup entry found for ${agent}/${skill}"
+
+  if [[ -L "${target}" ]]; then
+    run_cmd rm "${target}"
+  elif [[ -e "${target}" ]]; then
+    ts="$(timestamp)"
+    backup_path="${backup_root}/pre-restore-${ts}"
+    run_cmd mv "${target}" "${backup_path}"
+    log "[INFO] existing ${agent}/${skill} moved to ${backup_path}"
+  fi
+
+  run_cmd mv "${current_backup}" "${target}"
+  log "[OK] ${agent}/${skill}: restored from ${current_backup}"
+}
+
+cmd_sync() {
+  local agent="all"
+  local skill=""
+  local do_all=0
+  local item
+  local -a skills=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --agent)
+        [[ $# -ge 2 ]] || die "missing value for --agent"
+        agent="$2"
+        shift 2
+        ;;
+      --skill)
+        [[ $# -ge 2 ]] || die "missing value for --skill"
+        skill="$2"
+        shift 2
+        ;;
+      --all)
+        do_all=1
+        shift
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        shift
+        ;;
+      -h|--help)
+        usage_sync
+        exit 0
+        ;;
+      *)
+        die "unknown sync option: $1"
+        ;;
+    esac
+  done
+
+  validate_agent "with-all" "${agent}"
+
+  if [[ "${do_all}" -eq 1 && -n "${skill}" ]]; then
+    die "use either --all or --skill, not both"
+  fi
+  if [[ "${do_all}" -eq 0 && -z "${skill}" ]]; then
+    die "sync requires --skill <name> or --all"
+  fi
+
+  if [[ "${do_all}" -eq 1 ]]; then
+    while IFS= read -r item; do
+      skills+=("${item}")
+    done < <(list_repo_skills)
+    [[ "${#skills[@]}" -gt 0 ]] || die "no skills found under ${SKILLS_DIR}"
+  else
+    require_skill "${skill}"
+    skills+=("${skill}")
+  fi
+
+  for item in "${skills[@]}"; do
+    require_skill "${item}"
+  done
+
+  sync_repo
+
+  while IFS= read -r item; do
+    for skill in "${skills[@]}"; do
+      sync_skill_for_agent "${item}" "${skill}"
+    done
+  done < <(expand_agents "${agent}")
+}
+
+cmd_status() {
+  local agent="all"
+  local skill=""
+  local item status_code=0
+  local -a skills=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --agent)
+        [[ $# -ge 2 ]] || die "missing value for --agent"
+        agent="$2"
+        shift 2
+        ;;
+      --skill)
+        [[ $# -ge 2 ]] || die "missing value for --skill"
+        skill="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage_status
+        exit 0
+        ;;
+      *)
+        die "unknown status option: $1"
+        ;;
+    esac
+  done
+
+  validate_agent "with-all" "${agent}"
+
+  if [[ -n "${skill}" ]]; then
+    require_skill "${skill}"
+    skills+=("${skill}")
+  else
+    while IFS= read -r item; do
+      skills+=("${item}")
+    done < <(list_repo_skills)
+    [[ "${#skills[@]}" -gt 0 ]] || die "no skills found under ${SKILLS_DIR}"
+  fi
+
+  printf '%-8s %-28s %-16s %s\n' "agent" "skill" "state" "detail"
+  while IFS= read -r item; do
+    for skill in "${skills[@]}"; do
+      if ! status_skill_for_agent "${item}" "${skill}"; then
+        status_code=2
+      fi
+    done
+  done < <(expand_agents "${agent}")
+
+  return "${status_code}"
+}
+
+cmd_restore() {
+  local agent=""
+  local skill=""
+  local latest=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --agent)
+        [[ $# -ge 2 ]] || die "missing value for --agent"
+        agent="$2"
+        shift 2
+        ;;
+      --skill)
+        [[ $# -ge 2 ]] || die "missing value for --skill"
+        skill="$2"
+        shift 2
+        ;;
+      --latest)
+        latest=1
+        shift
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        shift
+        ;;
+      -h|--help)
+        usage_restore
+        exit 0
+        ;;
+      *)
+        die "unknown restore option: $1"
+        ;;
+    esac
+  done
+
+  [[ -n "${agent}" ]] || die "restore requires --agent <codex|claude>"
+  [[ -n "${skill}" ]] || die "restore requires --skill <name>"
+  [[ "${latest}" -eq 1 ]] || die "restore currently requires --latest"
+
+  validate_agent "strict" "${agent}"
+  restore_skill "${agent}" "${skill}"
+}
+
+cmd_validate() {
+  local skill=""
+  local do_all=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --skill)
+        [[ $# -ge 2 ]] || die "missing value for --skill"
+        skill="$2"
+        shift 2
+        ;;
+      --all)
+        do_all=1
+        shift
+        ;;
+      -h|--help)
+        usage_validate
+        exit 0
+        ;;
+      *)
+        die "unknown validate option: $1"
+        ;;
+    esac
+  done
+
+  if [[ "${do_all}" -eq 1 && -n "${skill}" ]]; then
+    die "use either --all or --skill, not both"
+  fi
+  if [[ "${do_all}" -eq 0 && -z "${skill}" ]]; then
+    die "validate requires --skill <name> or --all"
+  fi
+
+  # Call Python validation tool
+  if [[ "${do_all}" -eq 1 ]]; then
+    python3 "${REPO_ROOT}/tools/quick_validate.py" --all
+  else
+    python3 "${REPO_ROOT}/tools/quick_validate.py" --skill "${skill}"
+  fi
+}
+
+main() {
+  local cmd="${1:-}"
+  [[ -n "${cmd}" ]] || {
+    usage
+    exit 1
+  }
+  shift || true
+
+  case "${cmd}" in
+    sync) cmd_sync "$@" ;;
+    status) cmd_status "$@" ;;
+    restore) cmd_restore "$@" ;;
+    validate) cmd_validate "$@" ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      die "unknown command: ${cmd}"
+      ;;
+  esac
+}
+
+main "$@"
