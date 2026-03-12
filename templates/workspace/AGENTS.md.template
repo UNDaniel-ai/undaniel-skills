@@ -1,0 +1,64 @@
+## Shared Workflow Bootstrap
+
+This workspace is bootstrapped from `{{LULU_SKILLS_COMMON_ROOT}}`.
+
+## Skills
+
+- `und-workflow-entry`: 新任务首轮 skill 评估与 use/skip/order 协调 (file: {{UND_WORKFLOW_ENTRY_PATH}})
+- `und-brainstorming`: requirements 查漏、方案比较与 design challenge (file: {{UND_BRAINSTORMING_PATH}})
+- `und-writing-plans`: implementation-plan 的步骤级约束与输出契约 (file: {{UND_WRITING_PLANS_PATH}})
+- `und-subagent-driven-development`: Route C Stage 4 的 capability-aware subagent orchestration 与 fallback 协议 (file: {{UND_SUBAGENT_DRIVEN_DEVELOPMENT_PATH}})
+- `und-test-driven-development`: Stage 4 red/green/refactor 执行纪律 (file: {{UND_TEST_DRIVEN_DEVELOPMENT_PATH}})
+- `und-systematic-debugging`: 执行异常时的根因调查与调试纪律 (file: {{UND_SYSTEMATIC_DEBUGGING_PATH}})
+- `und-verification-before-completion`: completion claim 前的 fresh evidence 门槛 (file: {{UND_VERIFICATION_BEFORE_COMPLETION_PATH}})
+- `complex-task-solver`: 复杂任务流程编排与门禁控制 (file: {{COMPLEX_TASK_SOLVER_PATH}})
+- `workspace-structure-manager`: session 目录、INDEX.md 与阶段产物管理 (file: {{WORKSPACE_STRUCTURE_MANAGER_PATH}})
+- `skills-manager`: 共享 skill 治理、校验与同步 (file: {{SKILLS_MANAGER_PATH}})
+- `und-writing-skills`: shared skill 编写规范与触发测试治理 (file: {{UND_WRITING_SKILLS_PATH}})
+
+## Mandatory Entry Assessment
+
+For every new development task, implementation-oriented discussion, multi-step debugging, refactor, feature work, or cross-chat continuation, the agent MUST start with `und-workflow-entry` and explicitly assess the core workflow skills before taking any substantial action:
+
+- `und-workflow-entry`
+- `complex-task-solver`
+- `workspace-structure-manager`
+
+The first response MUST explicitly include:
+
+- `und-workflow-entry`: `use` or `skip`, with a concrete reason
+- `complex-task-solver`: `use` or `skip`, with a concrete reason
+- `workspace-structure-manager`: `use` or `skip`, with a concrete reason
+- explicitly named or obviously matching additional skills: `use` or `skip`, with a concrete reason
+- execution order if both are used
+- session strategy: `new` / `reuse` / `skip`
+
+Hard rules:
+
+- If the task changes shared skills in `lulu-skills-common`, also assess `skills-manager`.
+- If the task creates or substantially updates skills, also assess `und-writing-skills`.
+- If `complex-task-solver` selects `Route B` or `Route C`, then `workspace-structure-manager` becomes mandatory unless the user explicitly rejects session documents.
+- The agent must not begin design, implementation planning, or coding before writing this assessment.
+- If all core workflow skills are skipped, the agent must explicitly justify why the task is atomic.
+- Stage advancement requires dual confirmation: the assistant must explicitly request the stage transition, and the user reply must explicitly include the target stage name.
+- Generic replies such as `继续`, `好的`, or `按这个来` do not count as stage confirmation.
+- Requirement clarification is not stage confirmation. Stage transitions require explicit user confirmation before advancing.
+
+## Shared Workflow Notes
+
+- Use `und-writing-skills` when adding or substantially rewriting shared skills.
+- Use `und-brainstorming` when Route C needs requirements gap scan, option comparison, or design challenge.
+- Use `und-writing-plans` when approved design must be turned into executable Stage 3 steps.
+- Use `und-subagent-driven-development` when a confirmed Route C coding step should decide between real subagent dispatch and honest main-session fallback.
+- Use `und-test-driven-development` when confirmed implementation work needs explicit failing-test-first discipline.
+- Use `und-systematic-debugging` when execution hits a bug, flaky test, regression, or unknown failure cause.
+- Use `und-verification-before-completion` before claiming completion or writing acceptance with fresh evidence.
+- Route B / Route C work should keep temporary task documents in `temp/sessions/{session}/`.
+- At task end, record whether the work exposed a reusable workflow, missing checklist, or inaccurate skill instruction.
+- The entry assessment belongs in the opening response, before repo inspection, planning, or coding.
+
+## Workspace Extensions
+
+Add repo-specific skills, conventions, or extra guardrails below this line.
+
+<!-- repo-specific extensions -->

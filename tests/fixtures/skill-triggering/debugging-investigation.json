@@ -1,0 +1,18 @@
+{
+  "name": "debugging-investigation",
+  "description": "Checks that an execution-stage bug with unknown cause surfaces und-systematic-debugging before blind fixing.",
+
+  "turns": [
+
+    {
+      "prompt": "A multi-step development task is already in execution, and tests are now failing intermittently with an unknown root cause. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-systematic-debugging",
+        "session"
+      ]
+    }
+  ]
+}

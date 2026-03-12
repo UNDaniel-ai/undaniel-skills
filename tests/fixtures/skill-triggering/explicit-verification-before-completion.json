@@ -1,0 +1,18 @@
+{
+  "name": "explicit-verification-before-completion",
+  "description": "Checks that an explicit fresh-evidence request surfaces und-verification-before-completion before a completion claim.",
+
+  "turns": [
+
+    {
+      "prompt": "The implementation may be done, but do not run shell commands or edit files yet. I explicitly want you to use und-verification-before-completion and require fresh verification evidence before any completion claim. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-verification-before-completion",
+        "session"
+      ]
+    }
+  ]
+}

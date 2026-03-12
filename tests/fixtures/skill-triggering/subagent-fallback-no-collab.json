@@ -1,0 +1,22 @@
+{
+  "name": "subagent-fallback-no-collab",
+  "description": "Checks that the agent keeps the orchestration skill but states fallback when subagent capability is unavailable.",
+
+  "turns": [
+    {
+      "prompt": "A confirmed Route C coding step is marked 执行模式: subagent candidate, but the current environment has no real child-agent or collab tooling. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-subagent-driven-development",
+        "fallback",
+        [
+          "main-session",
+          "main session",
+          "主会话"
+        ]
+      ]
+    }
+  ]
+}

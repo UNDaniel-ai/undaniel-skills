@@ -1,0 +1,16 @@
+{
+  "name": "requirements-gap-scan",
+  "description": "Checks that a Route C requirements completeness review triggers und-brainstorming before implementation work.",
+  "turns": [
+    {
+      "prompt": "A new Route C development task is starting. We are still in requirements alignment, and I want you to check whether the goals, constraints, acceptance criteria, or unresolved questions are missing anything. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "session",
+        "und-brainstorming"
+      ]
+    }
+  ]
+}

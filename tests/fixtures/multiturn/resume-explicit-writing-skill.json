@@ -1,0 +1,23 @@
+{
+  "name": "resume-explicit-writing-skill",
+  "description": "Checks that a resumed session can update skill order when shared-skill editing is introduced later.",
+  "turns": [
+    {
+      "prompt": "A new implementation-oriented task is starting in this workspace. Do not run shell commands and do not edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "session"
+      ]
+    },
+    {
+      "prompt": "Continue in the same session. This is actually a shared skill change, and I explicitly want you to use und-writing-skills before any edits. Still do not run commands or modify files. Tell me the updated skill order first.",
+      "all_of": [
+        "und-writing-skills",
+        "skills-manager",
+        ["order", "顺序"]
+      ]
+    }
+  ]
+}

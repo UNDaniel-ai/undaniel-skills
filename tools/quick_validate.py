@@ -13,7 +13,7 @@ import sys
 import re
 import json
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Dict, List, Optional
 
 try:
     import yaml
@@ -36,6 +36,162 @@ class ValidatorConfig:
 
         self.repo_root = Path(repo_root)
         self.skills_dir = self.repo_root / "skills"
+
+
+# Skill-specific contract checks for high-impact governance skills.
+# Each listed token must appear in the corresponding SKILL.md.
+SKILL_CONTRACT_RULES = {
+    "complex-task-solver": [
+        "## 首轮技能识别协议（防漏触发）",
+        "命中的 skill 列表",
+        "使用顺序",
+        "跳过理由",
+        "复杂度预检清单（强制）",
+        "阶段门禁协议（Route B / Route C 强制）",
+        "显式确认信号协议（双重确定）",
+        "带目标阶段名的明确确认语句",
+        "不构成阶段确认",
+        "未完成 `requirements-alignment.md` 且未获得确认，不得创建 `design.md`。",
+        "未完成 `implementation-plan.md` 且未获得确认，不得开始代码编写。",
+        "und-brainstorming",
+        "und-writing-plans",
+        "方法型 skill 调度规则",
+        "session-summary.md",
+    ],
+    "workspace-structure-manager": [
+        "## 触发前置检查（防漏触发）",
+        "前置检查清单（强制）",
+        "session 策略",
+        "用户是否指定路径但任务本质仍是开发任务",
+        "## Workspace AGENTS.md Bootstrap",
+        "tools/init_workspace.py",
+        "## Session 门禁策略（强制）",
+        "门禁确认记录（强制）",
+        "AI 发起确认消息",
+        "用户确认原话",
+        "当前阶段",
+        "是否允许编码",
+        "session-summary.md",
+    ],
+    "skills-manager": [
+        "## Skill 识别失败修复流程",
+        "机制问题",
+        "执行漏触发",
+        "tools/skillctl validate --skill <skill-name>",
+        "und-writing-skills",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+        "fresh verification evidence",
+        "Mechanism Completeness Check",
+        "tools/init_workspace.py",
+        "tests/test_init_workspace.py",
+        "tools/quick_validate.py",
+        "Knowledge Drift Check",
+        "knowledge/*.md",
+    ],
+    "und-workflow-entry": [
+        "use / skip / why / order",
+        "session strategy",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "skills-manager",
+        "und-writing-skills",
+        "Before the assessment is complete, do not start design, implementation planning, coding, validation, or completion claims.",
+    ],
+    "und-writing-skills": [
+        "description 只写触发条件",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+        "semantic assertions",
+        "equivalent wording",
+        "tools/run_codex_fixture.py",
+        "tests/test_init_workspace.py",
+        "tools/skillctl validate --skill <skill-name>",
+        "Integration Surface Checklist",
+        "templates/workspace/AGENTS.md.template",
+        "tools/init_workspace.py",
+        "tools/quick_validate.py",
+        "dispatch / gate",
+        "knowledge/*.md",
+    ],
+    "und-brainstorming": [
+        "requirements gap scan",
+        "option comparison",
+        "design challenge",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+    ],
+    "und-writing-plans": [
+        "前置输入",
+        "验证命令",
+        "预期结果",
+        "Step Acceptance",
+        "postcondition",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "multi-turn",
+    ],
+    "und-test-driven-development": [
+        "Verify RED",
+        "Verify GREEN",
+        "TDD 例外",
+        "mock",
+        "test-only methods",
+        "incomplete mocks",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "multi-turn",
+    ],
+    "und-subagent-driven-development": [
+        "Capability Detection",
+        "tooling_supported",
+        "workspace_supported",
+        "review_supported",
+        "Task Eligibility",
+        "Status Model",
+        "DONE_WITH_CONCERNS",
+        "NEEDS_CONTEXT",
+        "BLOCKED",
+        "Spec Compliance Review",
+        "Code Quality Review",
+        "Fallback Protocol",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+    ],
+    "und-systematic-debugging": [
+        "Root Cause Investigation",
+        "Pattern Analysis",
+        "Hypothesis And Testing",
+        "condition-based waiting",
+        "defense-in-depth",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+    ],
+    "und-verification-before-completion": [
+        "claim -> command -> output -> evidence",
+        "fresh verification evidence",
+        "partial verification",
+        "agent success report",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "automatic trigger",
+        "explicit request",
+        "multi-turn",
+    ],
+}
 
 
 class ValidationError:
@@ -66,6 +222,7 @@ class SkillValidator:
         self.skill_path = Path(skill_path)
         self.skill_md = self.skill_path / "SKILL.md"
         self._content = content  # For testing: allows injection of content
+        self.frontmatter: Dict[str, object] = {}
         self.errors: List[ValidationError] = []
         self.warnings: List[ValidationError] = []
         self.stats = {
@@ -102,6 +259,7 @@ class SkillValidator:
 
         # Validate YAML frontmatter
         self._validate_yaml_frontmatter(content)
+        self._validate_skill_metadata_rules()
 
         # Validate Markdown structure
         self._validate_markdown_structure(content)
@@ -111,6 +269,9 @@ class SkillValidator:
 
         # Validate links
         self._validate_links(content)
+
+        # Validate required contracts for specific governance skills
+        self._validate_skill_contracts(content)
 
         return len(self.errors) == 0
 
@@ -147,6 +308,8 @@ class SkillValidator:
             self.error(None, "YAML frontmatter must be a dictionary")
             return
 
+        self.frontmatter = data
+
         # Check required fields
         if "name" not in data or not data["name"]:
             self.error(None, "YAML frontmatter: missing required field 'name'")
@@ -165,6 +328,39 @@ class SkillValidator:
                 json.dumps(data["metadata"])
             except (TypeError, ValueError) as e:
                 self.error(None, f"YAML frontmatter: 'metadata' is not valid JSON: {e}")
+
+    def _validate_skill_metadata_rules(self):
+        """Validate repo-specific metadata conventions."""
+        name = self.frontmatter.get("name")
+        description = self.frontmatter.get("description")
+
+        if not isinstance(name, str) or not isinstance(description, str):
+            return
+
+        if not name.startswith("und-"):
+            return
+
+        if self.skill_path.name != name:
+            self.error(
+                None,
+                f"und-* skill folder name must match frontmatter name: {self.skill_path.name} != {name}",
+            )
+
+        normalized = description.strip().lower()
+        if not (
+            normalized.startswith("trigger when:")
+            or normalized.startswith("use when:")
+        ):
+            self.error(
+                None,
+                "und-* skill description must start with trigger wording such as 'TRIGGER when:' or 'Use when:'",
+            )
+
+        if "do not trigger when:" not in normalized:
+            self.error(
+                None,
+                "und-* skill description must include 'DO NOT TRIGGER when:'",
+            )
 
     def _validate_markdown_structure(self, content: str):
         """Validate Markdown structure."""
@@ -280,6 +476,19 @@ class SkillValidator:
             elif url.startswith(("http://", "https://")):
                 if " " in url:
                     self.error(line_num, f"Invalid URL format (contains spaces): {url}")
+
+    def _validate_skill_contracts(self, content: str):
+        """Validate required contract tokens for selected skills."""
+        required_tokens = SKILL_CONTRACT_RULES.get(self.skill_path.name)
+        if not required_tokens:
+            return
+
+        for token in required_tokens:
+            if token not in content:
+                self.error(
+                    None,
+                    f"Skill contract missing required section/text: {token}"
+                )
 
     def report(self) -> str:
         """Generate validation report."""

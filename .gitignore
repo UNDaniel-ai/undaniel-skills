@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Testing
+.test-skill/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Workspace sessions (temporary task docs)
+temp/sessions/
+
+# Governance logs (local only, except README.md)
+skills/skills-manager/logs/*.md
+!skills/skills-manager/logs/README.md

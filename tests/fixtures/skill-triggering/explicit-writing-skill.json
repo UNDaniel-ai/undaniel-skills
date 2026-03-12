@@ -1,0 +1,14 @@
+{
+  "name": "explicit-writing-skill",
+  "description": "Checks that explicit authoring-skill requests are surfaced before any repo action.",
+  "turns": [
+    {
+      "prompt": "We are updating shared skills in lulu-skills-common. Do not run shell commands or inspect files. Before acting, tell me which skills you will use first. I explicitly want you to use und-writing-skills.",
+      "all_of": [
+        "und-workflow-entry",
+        "und-writing-skills",
+        "skills-manager"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "explicit-writing-plans",
+  "description": "Checks that explicit implementation-plan requests surface und-writing-plans before action.",
+  "turns": [
+    {
+      "prompt": "A confirmed design already exists for a multi-step development task. Do not run shell commands or edit files. I explicitly want you to use und-writing-plans before any implementation planning or coding. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "session",
+        "und-writing-plans"
+      ]
+    }
+  ]
+}

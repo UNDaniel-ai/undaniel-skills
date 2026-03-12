@@ -601,6 +601,474 @@ description: Test
 
 
 # ==============================================================================
+# SkillValidator - Skill Contract Validation Tests
+# ==============================================================================
+
+class TestSkillValidatorContracts:
+    """Tests for skill-specific contract validation."""
+
+    @pytest.mark.parametrize("skill_name", [
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "skills-manager",
+        "und-brainstorming",
+        "und-test-driven-development",
+        "und-systematic-debugging",
+        "und-verification-before-completion",
+        "und-workflow-entry",
+        "und-writing-plans",
+        "und-writing-skills",
+    ])
+    def test_missing_required_contract_tokens_triggers_error(self, tmp_skills_dir, skill_name):
+        """Target governance skills must include required contract tokens."""
+        skill_dir = tmp_skills_dir / skill_name
+        skill_dir.mkdir()
+        content = f"""---
+name: {skill_name}
+description: Test
+---
+# Test
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert any(
+            "Skill contract missing required section/text" in str(e)
+            for e in validator.errors
+        )
+
+    @pytest.mark.parametrize("skill_name,content", [
+        (
+            "complex-task-solver",
+            """---
+name: complex-task-solver
+description: Test
+---
+## 首轮技能识别协议（防漏触发）
+命中的 skill 列表
+使用顺序
+跳过理由
+复杂度预检清单（强制）
+阶段门禁协议（Route B / Route C 强制）
+显式确认信号协议（双重确定）
+带目标阶段名的明确确认语句
+不构成阶段确认
+未完成 `requirements-alignment.md` 且未获得确认，不得创建 `design.md`。
+未完成 `implementation-plan.md` 且未获得确认，不得开始代码编写。
+und-brainstorming
+und-writing-plans
+方法型 skill 调度规则
+session-summary.md
+""",
+        ),
+        (
+            "workspace-structure-manager",
+            """---
+name: workspace-structure-manager
+description: Test
+---
+## 触发前置检查（防漏触发）
+前置检查清单（强制）
+session 策略
+用户是否指定路径但任务本质仍是开发任务
+## Workspace AGENTS.md Bootstrap
+tools/init_workspace.py
+## Session 门禁策略（强制）
+门禁确认记录（强制）
+AI 发起确认消息
+用户确认原话
+当前阶段
+是否允许编码
+session-summary.md
+""",
+        ),
+        (
+            "skills-manager",
+            """---
+name: skills-manager
+description: Test
+---
+## Skill 识别失败修复流程
+机制问题
+执行漏触发
+tools/skillctl validate --skill <skill-name>
+und-writing-skills
+automatic trigger
+explicit request
+multi-turn
+fresh verification evidence
+Mechanism Completeness Check
+tools/init_workspace.py
+tests/test_init_workspace.py
+tools/quick_validate.py
+Knowledge Drift Check
+knowledge/*.md
+""",
+        ),
+        (
+            "und-brainstorming",
+            """---
+name: und-brainstorming
+description: |
+  TRIGGER when:
+    - Route C brainstorming is needed
+
+  DO NOT TRIGGER when:
+    - Atomic edit
+---
+requirements gap scan
+option comparison
+design challenge
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+explicit request
+multi-turn
+""",
+        ),
+        (
+            "und-workflow-entry",
+            """---
+name: und-workflow-entry
+description: |
+  TRIGGER when:
+    - Start a workflow
+
+  DO NOT TRIGGER when:
+    - Atomic edit
+---
+use / skip / why / order
+session strategy
+complex-task-solver
+workspace-structure-manager
+skills-manager
+und-writing-skills
+Before the assessment is complete, do not start design, implementation planning, coding, validation, or completion claims.
+""",
+        ),
+        (
+            "und-writing-plans",
+            """---
+name: und-writing-plans
+description: |
+  TRIGGER when:
+    - Implementation planning is needed
+
+  DO NOT TRIGGER when:
+    - Coding already started
+---
+前置输入
+验证命令
+预期结果
+Step Acceptance
+postcondition
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+multi-turn
+""",
+        ),
+        (
+            "und-writing-skills",
+            """---
+name: und-writing-skills
+description: |
+  TRIGGER when:
+    - Create a skill
+
+  DO NOT TRIGGER when:
+    - Product-only code
+---
+description 只写触发条件
+automatic trigger
+explicit request
+multi-turn
+semantic assertions
+equivalent wording
+tools/run_codex_fixture.py
+tests/test_init_workspace.py
+tools/skillctl validate --skill <skill-name>
+Integration Surface Checklist
+templates/workspace/AGENTS.md.template
+tools/init_workspace.py
+tools/quick_validate.py
+dispatch / gate
+knowledge/*.md
+""",
+        ),
+        (
+            "und-test-driven-development",
+            """---
+name: und-test-driven-development
+description: |
+  TRIGGER when:
+    - TDD execution is needed
+
+  DO NOT TRIGGER when:
+    - Design work only
+---
+Verify RED
+Verify GREEN
+TDD 例外
+mock
+test-only methods
+incomplete mocks
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+multi-turn
+""",
+        ),
+        (
+            "und-subagent-driven-development",
+            """---
+name: und-subagent-driven-development
+description: |
+  TRIGGER when:
+    - Subagent execution must be evaluated
+
+  DO NOT TRIGGER when:
+    - Planning only
+---
+Capability Detection
+tooling_supported
+workspace_supported
+review_supported
+Task Eligibility
+Status Model
+DONE_WITH_CONCERNS
+NEEDS_CONTEXT
+BLOCKED
+Spec Compliance Review
+Code Quality Review
+Fallback Protocol
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+explicit request
+multi-turn
+""",
+        ),
+        (
+            "und-systematic-debugging",
+            """---
+name: und-systematic-debugging
+description: |
+  TRIGGER when:
+    - Debugging is needed
+
+  DO NOT TRIGGER when:
+    - Planning only
+---
+Root Cause Investigation
+Pattern Analysis
+Hypothesis And Testing
+condition-based waiting
+defense-in-depth
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+explicit request
+multi-turn
+""",
+        ),
+        (
+            "und-verification-before-completion",
+            """---
+name: und-verification-before-completion
+description: |
+  TRIGGER when:
+    - Verification is needed before completion
+
+  DO NOT TRIGGER when:
+    - Active implementation only
+---
+claim -> command -> output -> evidence
+fresh verification evidence
+partial verification
+agent success report
+complex-task-solver
+workspace-structure-manager
+automatic trigger
+explicit request
+multi-turn
+""",
+        ),
+    ])
+    def test_required_contract_tokens_pass_validation(self, tmp_skills_dir, skill_name, content):
+        """Validation should pass contract check when required tokens exist."""
+        skill_dir = tmp_skills_dir / skill_name
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert not any(
+            "Skill contract missing required section/text" in str(e)
+            for e in validator.errors
+        )
+
+
+class TestPhase4KnowledgeContracts:
+    """Regression checks for Phase 4 planning and progress contracts."""
+
+    REPO_ROOT = Path(__file__).resolve().parent.parent
+
+    def test_phase4_plan_contract_fields_exist(self):
+        """Implementation-plan knowledge should require Phase 4 execution-mode fields."""
+        content = (
+            self.REPO_ROOT
+            / "skills"
+            / "complex-task-solver"
+            / "knowledge"
+            / "12-implementation-plan.md"
+        ).read_text(encoding="utf-8")
+
+        for token in ["执行模式", "Subagent Eligibility", "Review Contract"]:
+            assert token in content
+
+    def test_phase4_progress_tracking_mentions_subagent_facts(self):
+        """Progress-tracking knowledge should record subagent dispatch and fallback evidence."""
+        content = (
+            self.REPO_ROOT
+            / "skills"
+            / "complex-task-solver"
+            / "knowledge"
+            / "13-progress-tracking.md"
+        ).read_text(encoding="utf-8")
+
+        for token in ["当前执行模式", "subagent dispatch", "fallback"]:
+            assert token in content
+
+    def test_phase4_workspace_templates_include_subagent_sections(self):
+        """Workspace templates should expose subagent execution and review sections."""
+        content = (
+            self.REPO_ROOT
+            / "skills"
+            / "workspace-structure-manager"
+            / "knowledge"
+            / "4-document-templates.md"
+        ).read_text(encoding="utf-8")
+
+        for token in [
+            "执行模式",
+            "Subagent Eligibility",
+            "Review Contract",
+            "Subagent Dispatch Log",
+            "Review Loop",
+            "Fallback Record",
+        ]:
+            assert token in content
+
+
+class TestSkillValidatorUndMetadata:
+    """Tests for und-* metadata conventions."""
+
+    def test_valid_und_description_passes(self, tmp_skills_dir):
+        """und-* skills should accept trigger-first descriptions."""
+        skill_dir = tmp_skills_dir / "und-sample"
+        skill_dir.mkdir()
+        content = """---
+name: und-sample
+description: |
+  TRIGGER when:
+    - Start a workflow task
+
+  DO NOT TRIGGER when:
+    - Atomic edit
+---
+# Sample
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert not any("und-* skill description" in str(e) for e in validator.errors)
+
+    def test_und_description_requires_trigger_prefix(self, tmp_skills_dir):
+        """und-* descriptions must start with trigger wording."""
+        skill_dir = tmp_skills_dir / "und-sample"
+        skill_dir.mkdir()
+        content = """---
+name: und-sample
+description: This skill coordinates workflow entry.
+---
+# Sample
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert any("must start with trigger wording" in str(e) for e in validator.errors)
+
+    def test_und_description_requires_do_not_trigger(self, tmp_skills_dir):
+        """und-* descriptions must include a do-not-trigger section."""
+        skill_dir = tmp_skills_dir / "und-sample"
+        skill_dir.mkdir()
+        content = """---
+name: und-sample
+description: |
+  TRIGGER when:
+    - Start a workflow task
+---
+# Sample
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert any("DO NOT TRIGGER" in str(e) for e in validator.errors)
+
+    def test_und_folder_name_must_match_frontmatter(self, tmp_skills_dir):
+        """und-* skill folders should match the frontmatter name."""
+        skill_dir = tmp_skills_dir / "und-folder"
+        skill_dir.mkdir()
+        content = """---
+name: und-other
+description: |
+  TRIGGER when:
+    - Start a workflow task
+
+  DO NOT TRIGGER when:
+    - Atomic edit
+---
+# Sample
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert any("folder name must match" in str(e) for e in validator.errors)
+
+    def test_non_target_skill_skips_contract_check(self, tmp_skills_dir):
+        """Skills outside the contract map should not fail contract checks."""
+        skill_dir = tmp_skills_dir / "generic-skill"
+        skill_dir.mkdir()
+        content = """---
+name: generic-skill
+description: Test
+---
+# Generic
+"""
+        (skill_dir / "SKILL.md").write_text(content)
+
+        validator = SkillValidator(skill_dir)
+        validator.validate()
+
+        assert not any(
+            "Skill contract missing required section/text" in str(e)
+            for e in validator.errors
+        )
+
+
+# ==============================================================================
 # SkillValidator - File I/O Tests
 # ==============================================================================
 

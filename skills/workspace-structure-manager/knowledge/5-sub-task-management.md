@@ -30,17 +30,20 @@
 temp/sessions/2026-03-09-1430-add-auth/
 ├── INDEX.md                           # 主线文档
 ├── sub-task-01-add-login/             # 子任务 1
-│   ├── design.md                      # 设计文档
-│   ├── impact-analysis.md             # 影响面分析
-│   └── confirmation.md                # 用户确认
+│   ├── requirements-alignment.md      # 子任务需求
+│   ├── design.md                      # 子任务设计
+│   ├── implementation-plan.md         # 子任务计划
+│   └── acceptance.md                  # 子任务验收
 ├── sub-task-02-add-permissions/       # 子任务 2
+│   ├── requirements-alignment.md
 │   ├── design.md
-│   ├── impact-analysis.md
-│   └── confirmation.md
+│   ├── implementation-plan.md
+│   └── acceptance.md
 └── sub-task-03-add-audit/             # 子任务 3
+    ├── requirements-alignment.md
     ├── design.md
-    ├── impact-analysis.md
-    └── confirmation.md
+    ├── implementation-plan.md
+    └── acceptance.md
 ```
 
 ### 子任务命名规则

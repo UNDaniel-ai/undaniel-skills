@@ -18,11 +18,14 @@ tools/skillctl restore --skill <name> --agent <codex|claude> --latest [--dry-run
 
 1. Run `git fetch origin main`.
 2. Run `git pull --ff-only origin main`.
-3. Validate the target skill exists in `skills/<name>/SKILL.md`.
-4. For each target agent:
+3. For `sync --all`, enumerate only non-hidden directories under `skills/`.
+4. Validate each target skill exists in `skills/<name>/SKILL.md`.
+5. For each target agent:
    - If skill target is already the correct symlink, keep as-is.
    - If target is a real directory/file, move it to `.skillctl-backups/<skill>/<timestamp>`.
    - Create or repair symlink to repository skill path.
+
+`sync --all` excludes hidden directories (for example, `.test-skill`).
 
 ## Status States
 
@@ -47,3 +50,12 @@ tools/skillctl restore --skill <name> --agent <codex|claude> --latest [--dry-run
   - route to update-existing-skill or create-new-skill by capability boundary.
 - Check accuracy only for skills used in the task.
 - For governance protocol details, read `governance.md`.
+
+## Recommended Verification Sequence
+
+Run these commands in order and avoid parallel execution:
+
+1. `tools/skillctl sync --all --agent all`
+2. `tools/skillctl status --agent all`
+
+Running `sync` and `status` concurrently can cause status checks to read stale state.

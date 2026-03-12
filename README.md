@@ -2,10 +2,19 @@
 
 Shared source-of-truth repository for common agent skills.
 
+## Team Guide
+
+For team onboarding and day-to-day setup, start from:
+
+- [SETUP.md](SETUP.md)
+
 ## Repository Layout
 
 - `skills/<skill-name>/`: managed skill contents
 - `tools/skillctl`: sync/status/restore command entrypoint
+- `tools/init_workspace.py`: bootstrap a workspace-local `AGENTS.md`
+- `tools/run_codex_fixture.py`: opt-in Codex behavior fixture runner
+- `templates/workspace/AGENTS.md.template`: shared workspace bootstrap template
 
 ## Quick Start
 
@@ -23,6 +32,36 @@ tools/skillctl status --agent all
 tools/skillctl restore --skill AIWay --agent codex --latest
 ```
 
+## Workspace Bootstrap
+
+Bootstrap the current workspace so the agent follows the shared `lulu-skills-common` process:
+
+```bash
+# From this repository root, initialize the current directory
+python3 tools/init_workspace.py
+
+# Initialize a specific workspace path
+python3 tools/init_workspace.py /path/to/workspace
+
+# Overwrite an existing AGENTS.md only when you explicitly want to replace it
+python3 tools/init_workspace.py /path/to/workspace --force
+```
+
+The generated `AGENTS.md` includes:
+
+- `und-workflow-entry` for first-response skill coordination
+- `und-brainstorming` and `und-writing-plans` for Route C design/planning methods
+- `und-test-driven-development`, `und-systematic-debugging`, and `und-verification-before-completion` for execution and acceptance discipline
+- shared workflow skill references for `complex-task-solver`, `workspace-structure-manager`, and `skills-manager`
+- `und-writing-skills` for shared skill authoring governance
+- mandatory first-response assessment for `und-workflow-entry`, `complex-task-solver`, and `workspace-structure-manager`
+- a reminder that requirement clarification is not stage confirmation
+- a reserved section for repo-specific extensions
+
+If you want a short instruction file to hand to an agent, use:
+
+- `templates/workspace/INIT_AGENT_PROMPT.md`
+
 ## Validation
 
 Validate skill format and syntax:
@@ -33,6 +72,13 @@ tools/skillctl validate --skill AIWay
 
 # Validate all skills
 tools/skillctl validate --all
+```
+
+Run opt-in behavior tests when trigger or workflow entry behavior changes:
+
+```bash
+CODEX_BEHAVIOR_TESTS=1 pytest tests/test_codex_skill_triggering.py
+CODEX_BEHAVIOR_TESTS=1 pytest tests/test_codex_multiturn.py
 ```
 
 ## Governance Logging
@@ -105,6 +151,11 @@ The `.test-skill` contains comprehensive error examples for testing the validati
    tools/skillctl sync --all --agent all
    ```
 
+4. Bootstrap the target workspace when you want it to follow the shared flow:
+   ```bash
+   python3 tools/init_workspace.py /path/to/workspace
+   ```
+
 ## Sync Behavior
 
 `sync` behavior:
@@ -124,3 +175,8 @@ Skills governance:
   - decide whether experience should be captured;
   - confirm update-existing vs create-new by capability boundary;
   - fix confirmed skill accuracy gaps for skills used in the task.
+- When a task creates or rewrites skills, also use `skills/und-writing-skills`.
+- Route B / Route C execution additionally relies on:
+  - `skills/und-test-driven-development`
+  - `skills/und-systematic-debugging`
+  - `skills/und-verification-before-completion`

@@ -1,0 +1,28 @@
+{
+  "name": "resume-to-debugging",
+  "description": "Checks that a resumed execution session can switch from TDD implementation into und-systematic-debugging when the cause becomes unknown.",
+
+  "turns": [
+
+    {
+      "prompt": "A confirmed implementation task is entering coding. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-test-driven-development",
+        "session"
+      ]
+    },
+    {
+      "prompt": "Continue in the same session. The implementation now has a flaky failure and the root cause is unknown. Still do not run commands or modify files. Tell me the updated skill order first.",
+      "all_of": [
+        "und-systematic-debugging",
+        [
+          "order",
+          "顺序"
+        ]
+      ]
+    }
+  ]
+}

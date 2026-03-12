@@ -1,0 +1,26 @@
+{
+  "name": "resume-to-verification-before-completion",
+  "description": "Checks that a resumed session routes to und-verification-before-completion before a done/fixed claim.",
+  "turns": [
+    {
+      "prompt": "A confirmed implementation task is already in execution and appears close to finished. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-test-driven-development",
+        "session"
+      ]
+    },
+    {
+      "prompt": "Continue in the same session. The fix seems done, and before claiming success I want fresh verification evidence. Still do not run commands or modify files. Tell me the updated skill order first.",
+      "all_of": [
+        "und-verification-before-completion",
+        [
+          "order",
+          "顺序"
+        ]
+      ]
+    }
+  ]
+}

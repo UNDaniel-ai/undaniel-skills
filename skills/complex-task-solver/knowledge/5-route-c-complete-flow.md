@@ -2,522 +2,214 @@
 
 ## 概述
 
-Route C 是为复杂任务设计的完整流程，适用于综合评分 ≥ 6.0 的任务。
+Route C 适用于综合评分 `>= 3.5` 的任务。典型场景包括架构重构、技术迁移、跨模块长链路开发、高风险任务。
 
-**核心理念**：多方案评估、完整设计、任务分解、并行执行、动态管理
+Phase 2 起，Route C 继续使用统一的 `Stage 0-6` 门禁模型，但会在其中显式调度方法型 skill：
 
-## 适用场景
+- `und-brainstorming`
+- `und-writing-plans`
+- `und-subagent-driven-development`
+- `und-test-driven-development`
+- `und-systematic-debugging`
+- `und-verification-before-completion`
 
-- 全局架构重构
-- 技术栈迁移
-- 大规模功能开发
-- 数据迁移
-- 系统级性能优化
-
-## 流程图
+## Route C 总流程
 
 ```mermaid
 graph TD
-    A[需求对齐] --> B[Brainstorm 2-3方案]
-    B --> C[用户选择方案]
-    C --> D[完整技术讨论 6W2H]
-    D --> E[设计输出 三图]
-    E --> F[完整影响面分析 6维度]
-    F --> G[任务分解 10+单元]
-    G --> H[实现计划 依赖+优先级]
-    H --> I[并行执行]
-    I --> J[进度追踪]
-    J --> K{发现新问题?}
-    K -->|是| L[创建动态子任务]
-    K -->|否| M{是否完成?}
-    L --> M
-    M -->|否| I
-    M -->|是| N[验证]
-    N --> O[完成]
+    A[Stage 0 Repo Grounding] --> B[Stage 1 Requirements Alignment]
+    B --> C[und-brainstorming gap scan]
+    C --> D{用户确认?}
+    D -->|否| B
+    D -->|是| E[Stage 2 Technical Design]
+    E --> F[und-brainstorming option compare + design challenge]
+    F --> G{用户确认?}
+    G -->|否| E
+    G -->|是| H[Stage 3 Implementation Planning]
+    H --> I[und-writing-plans]
+    I --> J{用户确认?}
+    J -->|否| H
+    J -->|是| K[Stage 4 TDD Execution]
+    K --> L{step = subagent candidate and capability checks pass?}
+    L -->|yes| M[und-subagent-driven-development]
+    L -->|no| N[und-test-driven-development]
+    M --> O{fallback to main session?}
+    O -->|yes| N
+    O -->|no| P{出现未知异常?}
+    N --> P
+    P -->|是| Q[und-systematic-debugging]
+    P -->|否| R[Stage 5 Acceptance]
+    Q --> R
+    R --> S[und-verification-before-completion]
+    S --> T[Stage 6 Session Closeout]
 ```
 
-**预计时间**：> 2 小时或跨多个 Chat
+## 兼容性说明
 
----
+- `complex-task-solver/SKILL.md` 的统一阶段状态机仍以 `Stage 0-6` 为准。
+- `und-brainstorming` 不再要求一个单独的持久化主文档阶段。
+- Brainstorm 结果默认写入：
+  - `requirements-alignment.md` 的 gap scan / 查漏补缺段落
+  - `design.md` 的方案比较 / AI 推荐 / design challenge 段落
+- 若任务确实需要额外补充材料，可以新增辅助文档，但不能替代正式门禁主文档。
 
-## 阶段 1: 需求对齐（深度）
+## 阶段定义
 
-与 Route B 相同，但更深入。
+### Stage 0: Repo Grounding
 
-### 检查清单（5 维度）
+必须完成：
 
-参考 [6. 需求对齐流程](6-requirements-alignment.md)
+- 梳理当前代码架构与关键模块
+- 确认真实约束、兼容性边界和现状问题
+- 为 requirements gap scan 与设计提供代码事实基础
 
-- [ ] **目标清晰度**：目标是否明确？
-- [ ] **范围明确性**：边界是否清楚？
-- [ ] **约束条件**：有哪些限制？
-- [ ] **优先级**：什么最重要？
-- [ ] **验收标准**：如何判断完成？
+### Stage 1: Requirements Alignment
 
----
+产物：`requirements-alignment.md`
 
-## 阶段 2: Brainstorm（必须）
+必须锁定：
 
-### 目标
+- 目标
+- 范围
+- 约束
+- 优先级
+- 验收标准
+- 未决问题
+- 用户确认结论
 
-生成 2-3 个候选方案，并从多个维度评估。
+Route C 额外要求：
 
-### 流程
+- 默认调用 `und-brainstorming` 做 requirements gap scan
+- 如果发现遗漏，必须显式补进“待确认项”或“约束 / 验收 / 未决问题”
 
-1. **分析需求和约束**
-2. **生成 2-3 个候选方案**
-3. **从三个维度评估每个方案**：
-   - 优点/缺点
-   - 技术风险
-   - 实施成本（时间、复杂度）
-4. **提供 AI 推荐方案和理由**
-5. **等待用户选择**
+### Stage 2: Technical Design
 
-### 输出格式
+产物：`design.md`
 
-```markdown
-## Brainstorm - 方案评估
+必须包含：
 
-### 分析需求
-你想实现 [X]，使得 [Y]，约束是 [Z]。
+- 当前代码事实
+- 选定方案与放弃的方案
+- `und-brainstorming` 的候选方案比较与 AI 推荐
+- `und-brainstorming` 的 design challenge / completeness review 结论
+- 主要改造点
+- 风险、回滚和兼容性策略
+- Mermaid 架构图
+- Mermaid 数据流图
+- Mermaid 实施流程图
+- 用户确认结论
 
----
+### Stage 3: Implementation Planning
 
-### 方案 1: [方案名称]
+产物：`implementation-plan.md`
 
-**思路**：[简要描述]
+默认由 `und-writing-plans` 生成，必须包含：
 
-**优点**：
-- [+] 优点 1
-- [+] 优点 2
+- 10+ 可执行单元（或足够细的最小增量）
+- 步骤依赖关系
+- `前置输入`
+- `文件范围`
+- `验证命令`
+- `预期结果`
+- `Step Acceptance`
+- `执行模式`
+- `Subagent Eligibility`
+- `Review Contract`
+- TDD 子结构
+- 并行执行边界
+- 例外说明
+- 用户确认结论
 
-**缺点**：
-- [-] 缺点 1
-- [-] 缺点 2
+### Stage 4: TDD Execution
 
-**技术风险**：[评估风险等级和内容]
+产物：`progress-details.md`
 
-**实施成本**：
-- 时间：[预估]
-- 复杂度：[高/中/低]
+必须记录：
 
----
-
-### 方案 2: [方案名称]
-
-[同上]
-
----
-
-### 方案 3: [方案名称]
-
-[同上]
-
----
-
-### AI 推荐
-
-基于 [评估标准]，建议选择**方案 X**。
-
-**理由**：
-- [理由 1]
-- [理由 2]
-- [理由 3]
-
----
-
-请选择你偏好的方案（1/2/3），或提出新的想法。
-```
-
-### 示例
-
-**任务**："REST API 迁移到 GraphQL"
-
-```markdown
-## Brainstorm - 方案评估
-
-### 分析需求
-你想将整个数据层从 REST API 迁移到 GraphQL，以提升前端数据获取的灵活性，约束是需要保持系统稳定，避免服务中断。
-
----
-
-### 方案 1: 渐进式迁移
-
-**思路**：保留 REST API，逐步添加 GraphQL 接口，允许两者共存，最后再移除 REST。
-
-**优点**：
-- [+] 风险最低，可以逐模块迁移
-- [+] 出问题可以快速回滚
-- [+] 团队有时间学习 GraphQL
-
-**缺点**：
-- [-] 迁移周期长（可能需要数周）
-- [-] 需要维护两套系统
-- [-] 代码冗余
-
-**技术风险**：低
-
-**实施成本**：
-- 时间：3-4 周
-- 复杂度：中
-
----
-
-### 方案 2: 并行双写
-
-**思路**：同时提供 REST 和 GraphQL 两套接口，前端逐步切换到 GraphQL。
-
-**优点**：
-- [+] 前端可以按需切换
-- [+] 两套系统独立，互不影响
-
-**缺点**：
-- [-] 需要维护两套系统
-- [-] 数据一致性风险
-- [-] 资源消耗大
-
-**技术风险**：中
-
-**实施成本**：
-- 时间：2-3 周
-- 复杂度：高
-
----
-
-### 方案 3: 一次性切换
-
-**思路**：快速实现 GraphQL，选择一个低峰期一次性切换。
-
-**优点**：
-- [+] 迁移周期短（1-2 周）
-- [+] 不需要维护两套系统
-- [+] 代码简洁
-
-**缺点**：
-- [-] 风险极高，出问题影响全系统
-- [-] 回滚困难
-- [-] 需要全面测试
-
-**技术风险**：高
-
-**实施成本**：
-- 时间：1-2 周
-- 复杂度：高
-
----
-
-### AI 推荐
-
-基于风险控制和稳定性，建议选择**方案 1（渐进式迁移）**。
-
-**理由**：
-- 风险最低，可以逐模块验证
-- 出问题可以快速回滚到 REST
-- 团队有足够时间学习 GraphQL
-- 虽然时间长，但稳定性最好
-
----
-
-请选择你偏好的方案（1/2/3），或提出新的想法。
-```
-
----
-
-## 阶段 3: 完整技术讨论
-
-### 目标
-
-进行完整的技术讨论，使用 6W2H + 风险 + 影响 框架。
-
-### 讨论框架
-
-参考 [7. 完整性检查清单](7-completeness-checklist.md)
-
-- **What**：要做什么？
-- **Why**：为什么做？
-- **Who**：谁参与？
-- **When**：何时做？
-- **Where**：在哪做？
-- **Which**：选择哪个方案？
-- **How**：如何实现？
-- **How much**：成本多少？
-- **风险评估**：有哪些风险？
-- **影响评估**：影响哪些方面？
-
----
-
-## 阶段 4: 设计输出（三图）
-
-### 目标
-
-绘制完整的设计图表。
-
-### 必需图表
-
-1. **架构图**：系统整体架构
-2. **数据流图**：数据如何流动
-3. **实施流程图**：实施步骤和顺序
-
-### 示例
-
-参考 [10. 设计模板库](10-design-templates.md)
-
----
-
-## 阶段 5: 完整影响面分析
-
-### 目标
-
-从 6 个维度分析任务对系统的影响。
-
-### 分析维度
-
-1. **代码影响**：涉及哪些文件和模块
-2. **功能影响**：影响哪些现有功能
-3. **性能影响**：对性能的影响
-4. **用户体验影响**：对用户的影响
-5. **依赖影响**：对其他系统的影响
-6. **风险影响**：可能的风险
-
-参考 [11. 影响面分析](11-impact-analysis.md)
-
----
-
-## 阶段 6: 任务分解
-
-### 目标
-
-将任务拆分为 10+ 可执行单元。
-
-### 分解原则
-
-- **独立性**：任务之间尽量独立
-- **可并行性**：识别可并行执行的任务
-- **优先级**：明确每个任务的优先级
-- **依赖关系**：明确任务之间的依赖
-
-参考 [9. 任务分解策略](9-task-breakdown.md)
-
-### 示例
-
-**任务**："REST API 迁移到 GraphQL"
-
-```markdown
-## 任务分解
-
-### 任务列表
-
-#### 任务 1: 设置 GraphQL 服务器（P0）
-- **依赖**：无
-- **可并行**：否
-- **子任务**：
-  - 安装 Apollo Server
-  - 配置 GraphQL Schema
-  - 配置 Resolver 基础结构
-
-#### 任务 2: 设计 GraphQL Schema（P0）
-- **依赖**：任务 1
-- **可并行**：否
-- **子任务**：
-  - 定义 User Type
-  - 定义 Order Type
-  - 定义 Query 和 Mutation
-
-#### 任务 3: 迁移用户模块（P0）
-- **依赖**：任务 2
-- **可并行**：可以与任务 4 并行
-- **子任务**：
-  - 实现 User Resolver
-  - 实现用户相关 Query
-  - 实现用户相关 Mutation
-  - 前端切换到 GraphQL
-
-#### 任务 4: 迁移订单模块（P0）
-- **依赖**：任务 2
-- **可并行**：可以与任务 3 并行
-- **子任务**：
-  - 实现 Order Resolver
-  - 实现订单相关 Query
-  - 实现订单相关 Mutation
-  - 前端切换到 GraphQL
-
-#### 任务 5: 迁移产品模块（P1）
-- **依赖**：任务 2
-- **可并行**：可以与任务 3/4 并行
-- **子任务**：
-  - 实现 Product Resolver
-  - 实现产品相关 Query
-  - 前端切换到 GraphQL
-
-#### 任务 6: 添加 DataLoader 优化 N+1 查询（P1）
-- **依赖**：任务 3/4/5
-- **可并行**：否
-- **子任务**：
-  - 分析 N+1 查询问题
-  - 实现 DataLoader
-  - 验证性能提升
-
-#### 任务 7: 添加缓存层（P1）
-- **依赖**：任务 6
-- **可并行**：否
-- **子任务**：
-  - 设计缓存策略
-  - 实现 Redis 缓存
-  - 验证缓存效果
-
-#### 任务 8: 集成测试（P0）
-- **依赖**：任务 3/4/5
-- **可并行**：否
-- **子任务**：
-  - 编写端到端测试
-  - 测试所有 GraphQL Query/Mutation
-  - 验证与 REST 的一致性
-
-#### 任务 9: 移除 REST API（P2）
-- **依赖**：任务 8
-- **可并行**：否
-- **子任务**：
-  - 确认所有前端已切换到 GraphQL
-  - 移除 REST 路由
-  - 移除相关代码
-
-#### 任务 10: 文档更新（P2）
-- **依赖**：任务 9
-- **可并行**：可以提前开始
-- **子任务**：
-  - 更新 API 文档
-  - 更新开发者指南
-  - 更新架构文档
-```
-
----
-
-## 阶段 7: 实现计划
-
-### 目标
-
-基于任务分解，创建详细的实现计划。
-
-### 文档结构
-
-参考 [12. 实现计划文档](12-implementation-plan.md)
-
-包含：
-- 总体概览
-- 总体进度
-- 详细步骤（每个步骤包含状态、优先级、依赖、任务清单、验收标准）
+- 当前执行步骤
+- 当前执行模式（主会话 / subagent candidate / fallback）
+- 已落地测试
+- `Verify RED / Verify GREEN` 结果
+- 代码 / 测试 / 重构状态
+- subagent dispatch log、implementer status 与 review loop（若进入 orchestration）
+- 根因证据、假设与验证动作（若进入调试）
 - 动态子任务
+- 阻塞项与恢复动作
 
----
+默认方法：
 
-## 阶段 8: 并行执行
+- Route C 对满足条件的步骤可先调度 `und-subagent-driven-development`
+- confirmed implementation step 走 `und-test-driven-development`
+- bug、flaky、回归来源不清时走 `und-systematic-debugging`
 
-### 目标
+overlay 规则：
 
-按实现计划并行执行独立任务。
+- `und-subagent-driven-development` 不是新顶层阶段，而是 Stage 4 的 execution overlay
+- 该 overlay 负责 capability detection、dispatch、review order 与 fallback
+- 无真实 subagent / collab 能力时，必须显式写明 fallback，而不是伪装成已经 dispatch
 
-### 并行策略
+### Stage 5: Acceptance
 
-识别可并行的任务：
-- 任务 3（用户模块）和任务 4（订单模块）可并行
-- 任务 3/4/5（各模块迁移）可并行
-- 任务 10（文档）可提前开始
+产物：`acceptance.md`
 
-### 注意事项
+必须验证：
 
-- 确保任务之间无强依赖
-- 定期同步进度
-- 及时识别和解决冲突
+- 原始需求映射
+- 核心业务场景
+- 回归场景
+- fresh verification evidence
+- 风险关闭情况
+- 未完成项 / defer 项
+- 用户确认结论
 
----
+默认方法：
 
-## 阶段 9: 进度追踪
+- completion claim 前走 `und-verification-before-completion`
 
-### 目标
+### Stage 6: Session Closeout
 
-实时追踪实现进度，支持跨 Chat 断点续传。
+产物：`session-summary.md`
 
-### 追踪机制
+必须包含：
 
-参考 [13. 进度追踪机制](13-progress-tracking.md)
+- 最终结果
+- 关键决策回顾
+- 偏差与遗留项
+- 候选经验沉淀
+- 是否已发起 `skills-manager` 治理询问
 
-- 实时更新 `implementation-plan.md`
-- 记录总体进度百分比
-- 支持跨 Chat 恢复
+## Route C 不可跳过的内容
 
----
+- repo grounding
+- requirements gap scan
+- 方案比较与 design challenge
+- 设计三图
+- implementation plan 确认
+- TDD execution
+- acceptance
+- session closeout
 
-## 阶段 10: 动态子任务管理
+## 典型适用任务
 
-### 目标
+- REST -> GraphQL 迁移
+- 认证系统重构
+- 数据层重构
+- 大规模权限模型改造
+- 系统级性能改造
 
-实施过程中发现新问题时，创建动态子任务。
+## 常见错误
 
-### 何时创建子任务
-
-- 发现新的技术问题
-- 发现遗漏的功能点
-- 发现需要额外的优化
-
-### 子任务格式
-
-```markdown
-## 动态子任务
-
-### 子任务 A（发现于步骤 3）
-- **描述**：发现需要添加 DataLoader 优化 N+1 查询
-- **优先级**：P1
-- **状态**：⏳ 待开始
-- **依赖**：步骤 3、4、5 完成后
-
-### 子任务 B（发现于步骤 5）
-- **描述**：发现产品模块需要额外的图片缓存
-- **优先级**：P2
-- **状态**：⏳ 待开始
-```
-
----
-
-## 阶段 11: 错误恢复
-
-### 目标
-
-实施过程中遇到错误时，启动错误恢复机制。
-
-### 4 层恢复策略
-
-参考 [14. 错误恢复协议](14-error-recovery.md)
-
-1. **L1: 重试**：技术性问题自动重试（最多 3 次）
-2. **L2: 简化**：降低要求（如：用文字代替架构图）
-3. **L3: 跳过**：标记待补充，继续下一阶段
-4. **L4: 回退**：回退到问题阶段重新设计
-
----
-
-## 完整示例
-
-请参考 SKILL.md 中的"场景 3：复杂需求 (Route C)"示例。
-
----
-
-## 最佳实践
-
-1. **Brainstorm 不可跳过**：即使方案看似明确，也要评估 2-3 个方案
-2. **完整设计**：三图必须包含（架构图 + 数据流图 + 流程图）
-3. **任务分解充分**：至少 10+ 可执行单元
-4. **识别并行机会**：最大化并行执行效率
-5. **动态管理**：发现新问题及时创建子任务
-
----
+- 未看当前代码就开始方案竞选
+- requirements 没查漏就直接进设计
+- 设计只有正向方案，没有 challenge
+- 计划只有 TODO，没有输入 / 输出 / 验证契约
+- 遇到执行异常后直接猜修复，而没有 root-cause tracing
+- 在 Acceptance 中复用旧结果，没有 fresh verification evidence
+- 编码结束后没有独立验收与收尾
 
 ## 参考资料
 
-- [8. Brainstorm 协议](8-brainstorm-protocol.md) - Brainstorm 详细流程
-- [7. 完整性检查清单](7-completeness-checklist.md) - 6W2H + 风险 + 影响
-- [9. 任务分解策略](9-task-breakdown.md) - 任务分解详细方法
-- [10. 设计模板库](10-design-templates.md) - 三图模板
-- [11. 影响面分析](11-impact-analysis.md) - 6 维度影响分析
-- [12. 实现计划文档](12-implementation-plan.md) - 实现计划文档结构
-- [13. 进度追踪机制](13-progress-tracking.md) - 进度追踪详细说明
-- [14. 错误恢复协议](14-error-recovery.md) - 错误恢复详细说明
+- [6. 需求对齐流程](6-requirements-alignment.md)
+- [8. Brainstorm 协议](8-brainstorm-protocol.md)
+- [12. 实现计划文档](12-implementation-plan.md)
+- [13. 进度追踪机制](13-progress-tracking.md)

@@ -34,6 +34,21 @@ agent    skill                        state        detail
 claude   workspace-structure-manager  linked-ok    /path/to/skill
 ```
 
+### 当前工作区接入共享流程
+
+当你希望 Agent 在某个工作区内直接按 `lulu-skills-common` 的方式工作时，先初始化该工作区的 `AGENTS.md`：
+
+```bash
+cd /Users/undaniel/Developer/lulu-skills-common
+python3 tools/init_workspace.py /path/to/workspace
+```
+
+如果目标目录已经有 `AGENTS.md`，默认会拒绝覆盖；只有在你明确要替换时才追加 `--force`。
+
+如果你想给 Agent 一个更短的“参照这个文件初始化”的入口，直接使用：
+
+- `templates/workspace/INIT_AGENT_PROMPT.md`
+
 ## 使用场景
 
 ### 场景 1: 新任务自动创建 Session

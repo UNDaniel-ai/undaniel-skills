@@ -1,0 +1,18 @@
+{
+  "name": "acceptance-verification",
+  "description": "Checks that Stage 5 completion claims surface und-verification-before-completion before success is stated.",
+
+  "turns": [
+
+    {
+      "prompt": "A multi-step development task appears complete and we are about to write acceptance. Do not run shell commands or edit files. Before claiming success, first tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-verification-before-completion",
+        "session"
+      ]
+    }
+  ]
+}

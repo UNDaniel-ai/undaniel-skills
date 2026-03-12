@@ -1,0 +1,17 @@
+{
+  "name": "route-c-tdd-execution",
+  "description": "Checks that confirmed Stage 4 implementation work surfaces und-test-driven-development before coding.",
+
+  "turns": [
+    {
+      "prompt": "A confirmed Route C implementation plan already exists for a non-trivial behavior change, and coding is about to start. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-test-driven-development",
+        "session"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "resume-to-tdd-execution",
+  "description": "Checks that a resumed session can move from planning into und-test-driven-development once coding is approved.",
+
+  "turns": [
+
+    {
+      "prompt": "A new Route C implementation-oriented task is starting. The design is already confirmed and we need a detailed implementation plan before coding. Do not run shell commands or edit files. First tell me which skills you will use or skip, in what order, and whether you will create, reuse, or skip a session.",
+      "all_of": [
+        "und-workflow-entry",
+        "complex-task-solver",
+        "workspace-structure-manager",
+        "und-writing-plans",
+        "session"
+      ]
+    },
+    {
+      "prompt": "Continue in the same session. The implementation plan is now confirmed, and the first behavior change should start with a failing test. Still do not run commands or modify files. Tell me the updated skill order first.",
+      "all_of": [
+        "und-test-driven-development",
+        [
+          "order",
+          "顺序"
+        ]
+      ]
+    }
+  ]
+}
